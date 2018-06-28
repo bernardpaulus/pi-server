@@ -29,12 +29,11 @@ import com.digitalpetri.opcua.raspberrypi.nodes.DigitalOutputNode;
 import com.google.common.collect.ImmutableList;
 import org.eclipse.milo.opcua.sdk.core.Reference;
 import org.eclipse.milo.opcua.sdk.server.api.AccessContext;
-import org.eclipse.milo.opcua.sdk.server.api.AddressSpace;
 import org.eclipse.milo.opcua.sdk.server.api.DataItem;
 import org.eclipse.milo.opcua.sdk.server.api.MonitoredItem;
 import org.eclipse.milo.opcua.sdk.server.api.Namespace;
+import org.eclipse.milo.opcua.sdk.server.api.ServerNodeMap;
 import org.eclipse.milo.opcua.sdk.server.nodes.AttributeContext;
-import org.eclipse.milo.opcua.sdk.server.nodes.ServerContext;
 import org.eclipse.milo.opcua.sdk.server.nodes.ServerNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaObjectNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaVariableNode;
@@ -64,7 +63,7 @@ public class PiNamespace implements Namespace {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
-    private final AddressSpace addressSpace;
+    private final ServerNodeMap nodeMap;
 
     private final UaObjectNode gpioFolder;
     private final SubscriptionModel subscriptionModel;
@@ -76,18 +75,18 @@ public class PiNamespace implements Namespace {
         this.server = server;
         this.namespaceIndex = namespaceIndex;
 
-        addressSpace = server.getServer().getAddressSpace();
+        nodeMap = server.getServer().getNodeMap();
 
-        gpioFolder = UaObjectNode.builder(server.getServer())
+        gpioFolder = UaObjectNode.builder(nodeMap)
             .setNodeId(new NodeId(namespaceIndex, "GPIO"))
             .setBrowseName(new QualifiedName(namespaceIndex, "GPIO"))
             .setDisplayName(LocalizedText.english("GPIO"))
             .setTypeDefinition(Identifiers.FolderType)
             .build();
 
-        addressSpace.addNode(gpioFolder);
+        nodeMap.put(gpioFolder.getNodeId(), gpioFolder);
 
-        addressSpace.addReference(new Reference(
+        server.getServer().getUaNamespace().getObjectsFolder().addReference(new Reference(
             Identifiers.ObjectsFolder,
             Identifiers.Organizes,
             gpioFolder.getNodeId().expanded(),
@@ -122,7 +121,7 @@ public class PiNamespace implements Namespace {
 
             return opt2stream(Optional.ofNullable(node));
         }).forEach(n -> {
-            addressSpace.put(n.getNodeId(), n);
+            nodeMap.put(n.getNodeId(), n);
 
             gpioFolder.addReference(new Reference(
                 gpioFolder.getNodeId(),
@@ -154,7 +153,7 @@ public class PiNamespace implements Namespace {
 
             return opt2stream(Optional.ofNullable(node));
         }).forEach(n -> {
-            addressSpace.put(n.getNodeId(), n);
+            nodeMap.put(n.getNodeId(), n);
 
             gpioFolder.addReference(new Reference(
                 gpioFolder.getNodeId(),
@@ -176,17 +175,13 @@ public class PiNamespace implements Namespace {
         return NAMESPACE_URI;
     }
 
-    public AddressSpace getAddressSpace() {
-        return addressSpace;
-    }
-
-    public ServerContext getServerContext() {
-        return server.getServer();
+    public ServerNodeMap getNodeMap() {
+        return nodeMap;
     }
 
     @Override
     public CompletableFuture<List<Reference>> browse(AccessContext accessContext, NodeId nodeId) {
-        List<Reference> references = addressSpace.getNode(nodeId)
+        List<Reference> references = nodeMap.getNode(nodeId)
             .map(ServerNode::getReferences)
             .orElse(ImmutableList.of());
 
@@ -207,15 +202,13 @@ public class PiNamespace implements Namespace {
             UInteger attributeId = readValueId.getAttributeId();
             String indexRange = readValueId.getIndexRange();
 
-            DataValue value = addressSpace.getNode(nodeId)
+            DataValue value = nodeMap.getNode(nodeId)
                 .map(n ->
                     n.readAttribute(
                         new AttributeContext(context),
                         attributeId,
                         timestamps,
-                        indexRange,
-                        QualifiedName.NULL_VALUE
-                    )
+                        indexRange)
                 )
                 .orElse(new DataValue(new StatusCode(StatusCodes.Bad_NodeIdUnknown)));
 
@@ -235,7 +228,7 @@ public class PiNamespace implements Namespace {
             DataValue value = writeValue.getValue();
             String indexRange = writeValue.getIndexRange();
 
-            StatusCode result = addressSpace.getNode(nodeId).map(n -> {
+            StatusCode result = nodeMap.getNode(nodeId).map(n -> {
                 try {
                     n.writeAttribute(new AttributeContext(context), attributeId, value, indexRange);
 

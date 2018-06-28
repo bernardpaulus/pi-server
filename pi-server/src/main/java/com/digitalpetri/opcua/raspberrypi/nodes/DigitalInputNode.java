@@ -26,7 +26,6 @@ import com.pi4j.io.gpio.PinPullResistance;
 import com.pi4j.io.gpio.PinState;
 import com.pi4j.io.gpio.event.GpioPinListenerDigital;
 import org.eclipse.milo.opcua.sdk.server.api.ServerNodeMap;
-import org.eclipse.milo.opcua.sdk.server.nodes.ServerContext;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaVariableNode;
 import org.eclipse.milo.opcua.stack.core.Identifiers;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
@@ -42,13 +41,13 @@ public class DigitalInputNode extends UaVariableNode {
 
     private final GpioPinDigitalInput input;
 
-    public DigitalInputNode(ServerContext context,
+    public DigitalInputNode(ServerNodeMap nodeMap,
                             NodeId nodeId,
                             QualifiedName browseName,
                             LocalizedText displayName,
                             InputConfig inputConfig) {
 
-        super(context, nodeId, browseName, displayName);
+        super(nodeMap, nodeId, browseName, displayName);
 
         boolean pullDown = inputConfig.getResistance().equalsIgnoreCase("pull-down");
 
@@ -74,7 +73,7 @@ public class DigitalInputNode extends UaVariableNode {
         UShort namespaceIndex = namespace.getNamespaceIndex();
 
         return new DigitalInputNode(
-            namespace.getServerContext(),
+            namespace.getNodeMap(),
             new NodeId(namespaceIndex, "Pin" + inputConfig.getPin()),
             new QualifiedName(namespaceIndex, inputConfig.getName()),
             LocalizedText.english(inputConfig.getName()),

@@ -7,9 +7,9 @@ import com.digitalpetri.opcua.raspberrypi.api.Sensor;
 import com.digitalpetri.opcua.raspberrypi.api.SensorContext;
 import org.eclipse.milo.opcua.sdk.core.Reference;
 import org.eclipse.milo.opcua.sdk.server.api.AccessContext;
-import org.eclipse.milo.opcua.sdk.server.api.AddressSpace;
 import org.eclipse.milo.opcua.sdk.server.api.DataItem;
 import org.eclipse.milo.opcua.sdk.server.api.MonitoredItem;
+import org.eclipse.milo.opcua.sdk.server.api.ServerNodeMap;
 import org.eclipse.milo.opcua.sdk.server.nodes.AttributeContext;
 import org.eclipse.milo.opcua.sdk.server.nodes.ServerNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaObjectNode;
@@ -20,7 +20,6 @@ import org.eclipse.milo.opcua.stack.core.UaException;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
 import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
 import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
-import org.eclipse.milo.opcua.stack.core.types.builtin.QualifiedName;
 import org.eclipse.milo.opcua.stack.core.types.builtin.StatusCode;
 import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.UShort;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.TimestampsToReturn;
@@ -33,7 +32,7 @@ import static java.util.stream.Collectors.toList;
 
 public abstract class GrovePiSensor implements Sensor {
 
-    private final AddressSpace addressSpace;
+    private final ServerNodeMap nodeMap;
     private final SubscriptionModel subscriptionModel;
     private final UaObjectNode sensorNode;
 
@@ -44,18 +43,18 @@ public abstract class GrovePiSensor implements Sensor {
         this.grovePiContext = grovePiContext;
         this.sensorContext = sensorContext;
 
-        addressSpace = sensorContext.getServer().getAddressSpace();
+        nodeMap = sensorContext.getServer().getNodeMap();
 
         subscriptionModel = new SubscriptionModel(sensorContext.getServer(), this);
 
-        sensorNode = new UaObjectNode.UaObjectNodeBuilder(sensorContext.getServer())
+        sensorNode = new UaObjectNode.UaObjectNodeBuilder(nodeMap)
             .setNodeId(sensorContext.getRootNodeId())
             .setBrowseName(sensorContext.qualifiedName(sensorContext.getName()))
             .setDisplayName(LocalizedText.english(sensorContext.getName()))
             .setTypeDefinition(Identifiers.FolderType)
             .build();
 
-        addressSpace.put(sensorNode.getNodeId(), sensorNode);
+        nodeMap.put(sensorNode.getNodeId(), sensorNode);
     }
 
     @Override
@@ -70,7 +69,7 @@ public abstract class GrovePiSensor implements Sensor {
 
     @Override
     public CompletableFuture<List<Reference>> browse(AccessContext context, NodeId nodeId) {
-        ServerNode node = addressSpace.get(nodeId);
+        ServerNode node = nodeMap.get(nodeId);
 
         if (node != null) {
             return completedFuture(node.getReferences());
@@ -92,15 +91,14 @@ public abstract class GrovePiSensor implements Sensor {
         for (ReadValueId id : readValueIds) {
             DataValue value;
 
-            ServerNode node = addressSpace.get(id.getNodeId());
+            ServerNode node = nodeMap.get(id.getNodeId());
 
             if (node != null) {
                 value = node.readAttribute(
                     new AttributeContext(context),
                     id.getAttributeId(),
                     timestamps,
-                    id.getIndexRange(),
-                    QualifiedName.NULL_VALUE
+                    id.getIndexRange()
                 );
             } else {
                 value = new DataValue(new StatusCode(StatusCodes.Bad_NodeIdUnknown));
@@ -115,7 +113,7 @@ public abstract class GrovePiSensor implements Sensor {
     @Override
     public void write(WriteContext context, List<WriteValue> writeValues) {
         List<StatusCode> results = writeValues.stream().map(value -> {
-            if (addressSpace.containsKey(value.getNodeId())) {
+            if (nodeMap.containsKey(value.getNodeId())) {
                 return new StatusCode(StatusCodes.Bad_NotWritable);
             } else {
                 return new StatusCode(StatusCodes.Bad_NodeIdUnknown);

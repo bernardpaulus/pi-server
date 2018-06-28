@@ -8,7 +8,7 @@ import com.digitalpetri.grovepi.sensors.TemperatureAndHumiditySensor;
 import com.digitalpetri.opcua.raspberrypi.api.SensorContext;
 import com.digitalpetri.opcua.raspberrypi.grovepi.GrovePiContext;
 import com.digitalpetri.opcua.raspberrypi.grovepi.GrovePiSensor;
-import org.eclipse.milo.opcua.sdk.server.api.AddressSpace;
+import org.eclipse.milo.opcua.sdk.server.api.ServerNodeMap;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaVariableNode;
 import org.eclipse.milo.opcua.stack.core.Identifiers;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
@@ -25,6 +25,7 @@ public class TempAndHumiditySensor extends GrovePiSensor {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
+    private final ServerNodeMap nodeMap;
     private final long updateRate;
 
     private final UaVariableNode temperatureNode;
@@ -35,7 +36,7 @@ public class TempAndHumiditySensor extends GrovePiSensor {
     public TempAndHumiditySensor(GrovePiContext grovePiContext, SensorContext sensorContext) {
         super(grovePiContext, sensorContext);
 
-        AddressSpace addressSpace = sensorContext.getServer().getAddressSpace();
+        nodeMap = sensorContext.getServer().getNodeMap();
 
         updateRate = sensorContext.getConfig().getDuration(
             "sensor.grove.update-rate", TimeUnit.MILLISECONDS);
@@ -51,24 +52,24 @@ public class TempAndHumiditySensor extends GrovePiSensor {
         NodeId temperatureNodeId = sensorContext.nodeId("Temperature");
         NodeId humidityNodeId = sensorContext.nodeId("Humidity");
 
-        temperatureNode = new UaVariableNode.UaVariableNodeBuilder(sensorContext.getServer())
+        temperatureNode = new UaVariableNode.UaVariableNodeBuilder(nodeMap)
             .setNodeId(temperatureNodeId)
             .setBrowseName(new QualifiedName(sensorContext.getNamespaceIndex(), "Temperature"))
             .setDisplayName(LocalizedText.english("Temperature"))
             .setDataType(Identifiers.Float)
             .build();
 
-        addressSpace.addNode(temperatureNode);
+        nodeMap.addNode(temperatureNode);
         getSensorNode().addComponent(temperatureNode);
 
-        humidityNode = new UaVariableNode.UaVariableNodeBuilder(sensorContext.getServer())
+        humidityNode = new UaVariableNode.UaVariableNodeBuilder(nodeMap)
             .setNodeId(humidityNodeId)
             .setBrowseName(new QualifiedName(sensorContext.getNamespaceIndex(), "Humidity"))
             .setDisplayName(LocalizedText.english("Humidity"))
             .setDataType(Identifiers.Float)
             .build();
 
-        addressSpace.addNode(humidityNode);
+        nodeMap.addNode(humidityNode);
         getSensorNode().addComponent(humidityNode);
 
         readSensor();
