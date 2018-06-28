@@ -10,6 +10,7 @@
     <packaging>pom</packaging>
 
     <modules>
+        <module>GrovePi4J</module>
         <module>pi-server</module>
         <module>pi-server-jsw</module>
         <module>sensor-plugin</module>
@@ -184,6 +185,7 @@
         </plugins>
     </build>
 
+    <!--
     <distributionManagement>
         <snapshotRepository>
             <id>ossrh</id>
@@ -194,5 +196,5 @@
             <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
         </repository>
     </distributionManagement>
-
+    -->
 </project>

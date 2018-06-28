@@ -1,0 +1,3 @@
+[submodule "GrovePi4J"]
+	path = GrovePi4J
+	url = https://github.com/bernardpaulus/GrovePi4J.git
