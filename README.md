@@ -5,7 +5,7 @@ Installation
 ---------
 Download the latest release from https://github.com/kevinherron/pi-server/releases or package it from the latest source:
 ```
-git clone https://github.com/kevinherron/pi-server.git
+git clone --recurse-submodules <this-repo>
 cd pi-server
 mvn package
 ```
